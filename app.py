@@ -137,47 +137,64 @@ def openai_fallback(user_msg, user_name=None):
 # --- Main Route ---
 @app.route('/sms', methods=['POST'])
 def sms_reply():
-    # Accept both JSON (for web) and form data (for Twilio)
-    if request.is_json:
-        user_msg = request.json.get('Body', '').strip()
-        user_name = request.json.get('User', None)
-        visited = request.json.get('Visited', False)
-        twilio_mode = False
-    else:
-        user_msg = request.form.get('Body', '').strip()
-        user_name = request.form.get('User', None)  # Not sent by Twilio, but for compatibility
-        visited = False
-        twilio_mode = True
+    import sys
+    print('--- Incoming /sms request ---', file=sys.stderr)
+    print('Headers:', dict(request.headers), file=sys.stderr)
+    print('is_json:', request.is_json, file=sys.stderr)
+    print('form:', dict(request.form), file=sys.stderr)
+    print('json:', request.get_json(silent=True), file=sys.stderr)
+    try:
+        # Accept both JSON (for web) and form data (for Twilio)
+        if request.is_json:
+            user_msg = request.json.get('Body', '').strip()
+            user_name = request.json.get('User', None)
+            visited = request.json.get('Visited', False)
+            twilio_mode = False
+        else:
+            user_msg = request.form.get('Body', '').strip()
+            user_name = request.form.get('User', None)  # Not sent by Twilio, but for compatibility
+            visited = False
+            twilio_mode = True
 
-    lower_msg = user_msg.lower() if user_msg else ''
+        lower_msg = user_msg.lower() if user_msg else ''
 
-    if lower_msg in ['stop', 'leave me alone']:
-        reply = "Understood. I’ll step back. If you need me, just text again. 🌙"
-    elif any(x in lower_msg for x in ["bathroom", "restroom", "toilet"]):
-        reply = get_bathroom_info()
-    elif any(x in lower_msg for x in ["how do i get", "directions", "address", "where is canyon", "get to canyon", "find canyon", "location"]):
-        reply = (
-            "🗺️ Canyon is at 456 Postmodern Ave, New York, NY 10013.\n"
-            "Here’s a map: https://goo.gl/maps/xyzCanyon\n"
-            "Subway: Canal St (A/C/E/N/Q/R/6).\n"
-            "If you get lost, just text me—I’ll send a poetic rescue squad."
-        )
-    elif any(x in lower_msg for x in ["hello", "hi", "hey"]):
-        greeting = get_greeting(user_name)
-        if visited:
-            greeting += " (Welcome back!)"
-        reply = greeting
-    else:
-        ai_reply = openai_fallback(user_msg, user_name)
-        reply = ai_reply if ai_reply else "Sorry, I couldn't get a response from the AI right now."
+        if lower_msg in ['stop', 'leave me alone']:
+            reply = "Understood. I’ll step back. If you need me, just text again. 🌙"
+        elif any(x in lower_msg for x in ["bathroom", "restroom", "toilet"]):
+            reply = get_bathroom_info()
+        elif any(x in lower_msg for x in ["how do i get", "directions", "address", "where is canyon", "get to canyon", "find canyon", "location"]):
+            reply = (
+                "🗺️ Canyon is at 456 Postmodern Ave, New York, NY 10013.\n"
+                "Here’s a map: https://goo.gl/maps/xyzCanyon\n"
+                "Subway: Canal St (A/C/E/N/Q/R/6).\n"
+                "If you get lost, just text me—I’ll send a poetic rescue squad."
+            )
+        elif any(x in lower_msg for x in ["hello", "hi", "hey"]):
+            greeting = get_greeting(user_name)
+            if visited:
+                greeting += " (Welcome back!)"
+            reply = greeting
+        else:
+            ai_reply = openai_fallback(user_msg, user_name)
+            reply = ai_reply if ai_reply else "Sorry, I couldn't get a response from the AI right now."
 
-    if twilio_mode:
-        # Respond in TwiML XML for Twilio
-        from flask import Response
-        twiml = f"""<?xml version='1.0' encoding='UTF-8'?><Response><Message>{reply}</Message></Response>"""
-        return Response(twiml, mimetype='application/xml')
-    else:
-        return jsonify({"reply": reply})
+        print('Reply:', reply, file=sys.stderr)
+        if twilio_mode:
+            # Respond in TwiML XML for Twilio
+            from flask import Response
+            twiml = f"""<?xml version='1.0' encoding='UTF-8'?><Response><Message>{reply}</Message></Response>"""
+            return Response(twiml, mimetype='application/xml')
+        else:
+            return jsonify({"reply": reply})
+    except Exception as e:
+        import traceback
+        print('Exception in /sms:', e, file=sys.stderr)
+        traceback.print_exc()
+        if 'twilio_mode' in locals() and twilio_mode:
+            from flask import Response
+            return Response("<Response><Message>Sorry, an error occurred.</Message></Response>", mimetype='application/xml')
+        else:
+            return jsonify({'reply': 'Sorry, an error occurred.'}), 500
 
 @app.route('/')
 def index():
