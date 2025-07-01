@@ -1,0 +1,18 @@
+[
+  {
+    "keywords": ["restaurant", "food", "cafe", "eat", "menu"],
+    "response": "Yes! Canyon Café is open 1pm–10pm with playful bites and drinks. Try the Pixel Croissant or our Matcha Cloud Latte. Full menu: https://canyon.fake/menu"
+  },
+    {
+    "keywords": ["late", "hours", "opening hours", "open"],
+    "response": "Canyon is open later than most museums to make it easier for you to visit, we're open from 1-10pm"
+  },
+  {
+    "keywords": ["how do i get", "directions", "address", "where is canyon", "get to canyon", "find canyon", "location"],
+    "response": "🗺️ Canyon is at 456 Postmodern Ave, New York, NY 10013.\nHere’s a map: https://goo.gl/maps/xyzCanyon\nSubway: Canal St (A/C/E/N/Q/R/6).\nIf you get lost, just text me—I’ll send a poetic rescue squad."
+  },
+  {
+    "keywords": ["admission", "ticket", "entry", "price", "cost", "fee", "pay", "charge", "how much", "visit cost", "entrance", "cover"],
+    "response": "Entry to Canyon is free for your first visit and just $15 thereafter. We want everyone to experience art without barriers!"
+  }
+]
