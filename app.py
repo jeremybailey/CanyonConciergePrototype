@@ -200,6 +200,10 @@ def sms_reply():
 def index():
     return render_template('index.html')
 
+@app.route('/test', methods=['GET'])
+def test():
+    return "Test route is working!"
+
 @app.route('/reset_session', methods=['POST'])
 def reset_session():
     session.clear()
