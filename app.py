@@ -137,46 +137,47 @@ def openai_fallback(user_msg, user_name=None):
 # --- Main Route ---
 @app.route('/sms', methods=['POST'])
 def sms_reply():
-    user_msg = request.json.get('Body', '').strip().lower()
-    user_name = request.json.get('User', None)
-    # Simulate memory of previous visits
-    visited = request.json.get('Visited', False)
+    # Accept both JSON (for web) and form data (for Twilio)
+    if request.is_json:
+        user_msg = request.json.get('Body', '').strip()
+        user_name = request.json.get('User', None)
+        visited = request.json.get('Visited', False)
+        twilio_mode = False
+    else:
+        user_msg = request.form.get('Body', '').strip()
+        user_name = request.form.get('User', None)  # Not sent by Twilio, but for compatibility
+        visited = False
+        twilio_mode = True
 
-    if user_msg in ['stop', 'leave me alone']:
-        return jsonify({"reply": "Understood. I’ll step back. If you need me, just text again. 🌙"})
+    lower_msg = user_msg.lower() if user_msg else ''
 
-    if any(x in user_msg for x in ["bathroom", "restroom", "toilet"]):
-        return jsonify({"reply": get_bathroom_info()})
-    if any(x in user_msg for x in ["how do i get", "directions", "address", "where is canyon", "get to canyon", "find canyon", "location"]):
-        return jsonify({"reply": (
+    if lower_msg in ['stop', 'leave me alone']:
+        reply = "Understood. I’ll step back. If you need me, just text again. 🌙"
+    elif any(x in lower_msg for x in ["bathroom", "restroom", "toilet"]):
+        reply = get_bathroom_info()
+    elif any(x in lower_msg for x in ["how do i get", "directions", "address", "where is canyon", "get to canyon", "find canyon", "location"]):
+        reply = (
             "🗺️ Canyon is at 456 Postmodern Ave, New York, NY 10013.\n"
             "Here’s a map: https://goo.gl/maps/xyzCanyon\n"
             "Subway: Canal St (A/C/E/N/Q/R/6).\n"
             "If you get lost, just text me—I’ll send a poetic rescue squad."
-        )})
-
-
-
-
-    if "hello" in user_msg or "hi" in user_msg or "hey" in user_msg:
+        )
+    elif any(x in lower_msg for x in ["hello", "hi", "hey"]):
         greeting = get_greeting(user_name)
         if visited:
             greeting += " (Welcome back!)"
-        return jsonify({"reply": greeting})
+        reply = greeting
+    else:
+        ai_reply = openai_fallback(user_msg, user_name)
+        reply = ai_reply if ai_reply else "Sorry, I couldn't get a response from the AI right now."
 
-    # Custom knowledge check
-    # OpenAI fallback
-    ai_reply = openai_fallback(user_msg, user_name)
-    if ai_reply:
-        return jsonify({"reply": ai_reply})
-    # Default poetic fallback
-    reply = random.choice([
-        "I’m here if you need directions, recs, or a little art wisdom. ✨",
-        "Lost in the gallery? I can help — or at least keep you company.",
-        "Ask me anything — from bathroom locations to the meaning of postmodernism.",
-        "Need a food rec, event tip, or existential reassurance? I’m your bot!"
-    ])
-    return jsonify({"reply": reply})
+    if twilio_mode:
+        # Respond in TwiML XML for Twilio
+        from flask import Response
+        twiml = f"""<?xml version='1.0' encoding='UTF-8'?><Response><Message>{reply}</Message></Response>"""
+        return Response(twiml, mimetype='application/xml')
+    else:
+        return jsonify({"reply": reply})
 
 @app.route('/')
 def index():
