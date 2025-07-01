@@ -255,4 +255,6 @@ def handle_exception(e):
     return jsonify({'reply': 'Sorry, something went wrong on my end. The bot is having an existential moment. 🌀'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5050)
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
